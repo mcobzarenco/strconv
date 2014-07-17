@@ -226,17 +226,16 @@ def convert_bool(s):
 
 
 def convert_datetime(s):
+    if s == '':
+        raise ValueError
     try:
         return duparse(s)
-    except TypeError:  # parse may throw this in py3
+    except TypeError:
         raise ValueError
 
 
 def convert_date(s):
-    try:
-        return duparse(s).date()
-    except TypeError:  # parse may throw this in py3
-        raise ValueError
+    convert_datetime(s).date()
 
 
 def convert_time(s, time_formats=TIME_FORMATS):

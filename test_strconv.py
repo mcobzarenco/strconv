@@ -61,6 +61,7 @@ class ConvertTestCase(unittest.TestCase):
 
 class InferTestCase(unittest.TestCase):
     def test_infer(self):
+        self.assertEqual(strconv.infer(''), 'unknown')
         self.assertEqual(strconv.infer('-3'), 'int')
         self.assertEqual(strconv.infer('+0.4'), 'float')
         self.assertEqual(strconv.infer('true'), 'bool')
