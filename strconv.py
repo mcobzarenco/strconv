@@ -1,6 +1,11 @@
 # strconv.py
 # Copyright (c) 2013 Byron Ruth
 # BSD License
+import re
+from datetime import datetime
+
+from dateutil.parser import parse as duparse
+
 
 __version__ = '0.4.0'
 
@@ -190,33 +195,6 @@ class Strconv(object):
 
 # Built-in converters
 
-import re
-
-from datetime import datetime
-
-# Use dateutil for more robust parsing
-try:
-    from dateutil.parser import parse as duparse
-except ImportError:
-    import warnings
-    warnings.warn('python-dateutil is not installed. As of version 0.5, '
-                  'this will be a hard dependency of strconv for'
-                  'datetime parsing. Without it, only a limited set of '
-                  'datetime formats are supported without timezones.')
-    duparse = None
-
-DATE_FORMATS = (
-    '%Y-%m-%d',
-    '%m-%d-%Y',
-    '%m/%d/%Y',
-    '%m.%d.%Y',
-    '%m-%d-%y',
-    '%B %d, %Y',
-    '%B %d, %y',
-    '%b %d, %Y',
-    '%b %d, %y',
-)
-
 TIME_FORMATS = (
     '%H:%M:%S',
     '%H:%M',
@@ -247,37 +225,18 @@ def convert_bool(s):
     raise ValueError
 
 
-def convert_datetime(s, date_formats=DATE_FORMATS, time_formats=TIME_FORMATS):
-    if duparse:
-        try:
-            return duparse(s)
-        except TypeError:  # parse may throw this in py3
-            raise ValueError
-
-    for df in date_formats:
-        for tf in time_formats:
-            for sep in DATE_TIME_SEPS:
-                f = '{0}{1}{2}'.format(df, sep, tf)
-                try:
-                    return datetime.strptime(s, f)
-                except ValueError:
-                    pass
-    raise ValueError
+def convert_datetime(s):
+    try:
+        return duparse(s)
+    except TypeError:  # parse may throw this in py3
+        raise ValueError
 
 
-def convert_date(s, date_formats=DATE_FORMATS):
-    if duparse:
-        try:
-            return duparse(s).date()
-        except TypeError:  # parse may throw this in py3
-            raise ValueError
-
-    for f in date_formats:
-        try:
-            return datetime.strptime(s, f).date()
-        except ValueError:
-            pass
-    raise ValueError
+def convert_date(s):
+    try:
+        return duparse(s).date()
+    except TypeError:  # parse may throw this in py3
+        raise ValueError
 
 
 def convert_time(s, time_formats=TIME_FORMATS):
