@@ -1,15 +1,15 @@
-# strconv.py
-# Copyright (c) 2013 Byron Ruth
+# -*- coding: utf-8 -*-
+#
+# Original author: Byron Ruth
 # BSD License
-import re
+
+from collections import Counter
 from datetime import datetime
+import re
 
 from dateutil.parser import parse as duparse
 
-
-__version__ = '0.4.0'
-
-from collections import Counter
+__version__ = '0.4.1'
 
 
 class TypeInfo(object):
@@ -147,7 +147,7 @@ class Strconv(object):
             return type(v)
         return t
 
-    def infer_series(self, iterable, n=None, size=10):
+    def infer_series(self, iterable, n=None, size=None):
         info = Types(size=size)
         i = -1
 
@@ -168,7 +168,7 @@ class Strconv(object):
         info.set_total(i)
         return info
 
-    def infer_matrix(self, matrix, n=None, size=10):
+    def infer_matrix(self, matrix, n=None, size=None):
         infos = []
         i = -1
 
@@ -256,6 +256,7 @@ default_strconv = Strconv(converters=[
     ('datetime', convert_datetime),
     ('date', convert_date),
 ])
+
 
 register_converter = default_strconv.register_converter
 unregister_converter = default_strconv.unregister_converter
