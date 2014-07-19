@@ -195,6 +195,8 @@ class Strconv(object):
 
 # Built-in converters
 
+NAN_STRINGS = ['', 'NAN', 'N/A', 'NA', 'NONE']
+
 TIME_FORMATS = (
     '%H:%M:%S',
     '%H:%M',
@@ -214,7 +216,12 @@ def convert_int(s):
 
 
 def convert_float(s):
-    return float(s)
+    try:
+        return float(s)
+    except ValueError:
+        if s.upper() in NAN_STRINGS:
+            return float('nan')
+        raise ValueError()
 
 
 def convert_bool(s):
