@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 #
-# Original author: Byron Ruth
+# Based on strconv by Byron Ruth
+#
+# Maintainer: Marius Cobzarenco <marius@reinfer.io>
+#
 # BSD License
-
-from collections import Counter
+from collections import Counter, OrderedDict
 from datetime import datetime
 import re
 
@@ -83,69 +85,40 @@ class Types(object):
 
 
 class Strconv(object):
-    def __init__(self, converters=()):
-        self.converters = {}
-        self._order = []
+    def __init__(self, converters=[]):
+        self.converters = OrderedDict(converters)
 
-        for name, func in converters:
-            self.converters[name] = func
-            self._order.append(name)
-
-    def register_converter(self, name, func, priority=None):
-        if name is None:
-            raise ValueError('type name cannot be None')
-        if not callable(func):
-            raise ValueError('converter functions must be callable')
-
-        self.converters[name] = func
-
-        if name in self._order:
-            self._order.remove(name)
-
-        if priority is not None and priority < len(self._order):
-            self._order.insert(priority, name)
-        else:
-            self._order.append(name)
-
-    def unregister_converter(self, name):
-        if name in self._order:
-            self._order.remove(name)
-        if name in self.converters:
-            del self.converters[name]
-
-    def get_converter(self, name):
-        if name not in self.converters:
-            raise KeyError('no converter for type "{0}"'.format(name))
-        return self.converters[name]
-
-    def convert(self, s, include_type=False):
-        if isinstance(s, str):
-            for t in self._order:
-                func = self.converters[t]
-                try:
-                    v = func(s)
-                    if include_type:
-                        return v, t
-                    return v
-                except ValueError:
-                    pass
+    def convert(self, value_str, include_type=False):
+        assert isinstance(value_str, basestring)
+        for type_name, converter in self.converters.iteritems():
+            try:
+                value = converter(value_str)
+                if include_type:
+                    return value, type_name
+                else:
+                    return value
+            except ValueError:
+                pass
         if include_type:
-            return s, None
-        return s
+            return value_str, None
+        else:
+            return value_str
 
-    def convert_series(self, iterable, include_type=False):
-        for s in iterable:
-            yield self.convert(s, include_type=include_type)
+    def convert_series(self, series, include_type=False):
+        for value_str in series:
+            yield self.convert(value_str, include_type=include_type)
 
     def convert_matrix(self, matrix, include_type=False):
-        for r in matrix:
-            yield tuple(self.convert(s, include_type=include_type) for s in r)
+        for row in matrix:
+            yield tuple(
+                self.convert(value_str, include_type=include_type)
+                for value_str in row)
 
-    def infer(self, s, converted=False):
-        v, t = self.convert(s, include_type=True)
-        if t and converted:
-            return type(v)
-        return t
+    def infer(self, value_str, astype=False):
+        value, type_name = self.convert(value_str, include_type=True)
+        if type_name and astype:
+            return type(value)
+        return type_name
 
     def infer_series(self, iterable, n=None, size=None):
         info = Types(size=size)
@@ -242,7 +215,7 @@ def convert_datetime(s):
 
 
 def convert_date(s):
-    convert_datetime(s).date()
+    return convert_datetime(s).date()
 
 
 def convert_time(s, time_formats=TIME_FORMATS):
@@ -263,11 +236,6 @@ default_strconv = Strconv(converters=[
     ('datetime', convert_datetime),
     ('date', convert_date),
 ])
-
-
-register_converter = default_strconv.register_converter
-unregister_converter = default_strconv.unregister_converter
-get_converter = default_strconv.get_converter
 
 convert = default_strconv.convert
 convert_series = default_strconv.convert_series

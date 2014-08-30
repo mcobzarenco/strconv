@@ -1,42 +1,27 @@
 #!/usr/bin/env python
-
 import unittest
-import strconv
 from datetime import datetime, date, time
+
 from dateutil.tz import tzoffset
+
+import strconv
 
 
 class StrconvTestCase(unittest.TestCase):
-    def setUp(self):
-        self.s = strconv.Strconv()
-
     def test_default(self):
-        self.assertEqual(len(self.s.converters), 0)
-        self.assertRaises(KeyError, self.s.get_converter, 'int')
-        self.assertEqual(self.s.convert('1'), '1')
+        s = strconv.Strconv()
+        self.assertEqual(len(s.converters), 0)
+        self.assertRaises(KeyError, s.converters.__getitem__, 'int')
+        self.assertEqual(s.convert('1'), '1')
 
-    def test_register(self):
-        self.s.register_converter('int', strconv.convert_int)
-        self.assertEqual(len(self.s.converters), 1)
-        self.assertEqual(self.s.convert('1'), 1)
-        self.assertEqual(self.s.get_converter('int'), strconv.convert_int)
-
-    def test_unregister(self):
-        self.s.register_converter('int', strconv.convert_int)
-        self.s.unregister_converter('int')
-        self.assertEqual(len(self.s.converters), 0)
-        self.assertEqual(self.s.convert('1'), '1')
-
-    def test_register_priority(self):
-        self.s.register_converter('int', strconv.convert_int)
-        self.s.register_converter('bool', strconv.convert_bool, priority=0)
-        self.assertEqual(self.s._order, ['bool', 'int'])
-
-    def test_register_none(self):
-        self.assertRaises(ValueError, self.s.register_converter,
-                          None, lambda x: x)
-        self.assertRaises(ValueError, self.s.register_converter,
-                          'name', None)
+    def test_strconv_with_int_converter(self):
+        s = strconv.Strconv([('int', strconv.convert_int)])
+        self.assertEqual(len(s.converters), 1)
+        self.assertEqual(s.converters['int'], strconv.convert_int)
+        self.assertEqual(s.convert('1'), 1)
+        self.assertEqual(s.convert('-112'), -112)
+        self.assertEqual(s.convert('-112', True), (-112, 'int'))
+        self.assertEqual(s.convert('-1f12', True), ('-1f12', None))
 
 
 class ConvertTestCase(unittest.TestCase):
@@ -61,8 +46,8 @@ class ConvertTestCase(unittest.TestCase):
 
 class InferTestCase(unittest.TestCase):
     def test_infer(self):
-        self.assertEqual(strconv.infer(''), 'unknown')
         self.assertEqual(strconv.infer('-3'), 'int')
+        self.assertEqual(strconv.infer(''), 'float')
         self.assertEqual(strconv.infer('+0.4'), 'float')
         self.assertEqual(strconv.infer('true'), 'bool')
         self.assertEqual(strconv.infer('3/20/2013'), 'datetime')
@@ -70,20 +55,20 @@ class InferTestCase(unittest.TestCase):
         self.assertEqual(strconv.infer('March 4, 2013 5:40 PM'), 'datetime')
 
     def test_infer_converted(self):
-        self.assertEqual(strconv.infer('-3', converted=True), int)
-        self.assertEqual(strconv.infer('+0.4', converted=True), float)
-        self.assertEqual(strconv.infer('true', converted=True), bool)
-        self.assertEqual(strconv.infer('3/20/2013', converted=True), datetime)
-        self.assertEqual(strconv.infer('5:40 PM', converted=True), time)
+        self.assertEqual(strconv.infer('-3', astype=True), int)
+        self.assertEqual(strconv.infer('+0.4', astype=True), float)
+        self.assertEqual(strconv.infer('true', astype=True), bool)
+        self.assertEqual(strconv.infer('3/20/2013', astype=True), datetime)
+        self.assertEqual(strconv.infer('5:40 PM', astype=True), time)
         self.assertEqual(strconv.infer('March 4, 2013 5:40 PM',
-                         converted=True), datetime)
+                         astype=True), datetime)
 
     def test_infer_series(self):
         c0 = strconv.infer_series(['+0.4', '1.0', '0.'])
         self.assertEqual(c0.most_common(), [('float', 3)])
         self.assertEqual(c0.types['float'].freq(), 1.0)
         self.assertEqual(c0.types['float'].count, 3)
-        self.assertEqual(c0.types['float'].size, 10)  # default size
+        self.assertIsNone(c0.types['float'].size)  # default size
 
         self.assertEqual(strconv.infer_series([]), None)
 
@@ -96,7 +81,7 @@ class InferTestCase(unittest.TestCase):
         c0, c1, c2 = strconv.infer_matrix([['+0.4', 'true', '50']])
         self.assertEqual(c0.most_common(), [('float', 1)])
         self.assertEqual(c0.types['float'].freq(), 1.0)
-        self.assertEqual(c0.size, 10)  # default size
+        self.assertIsNone(c0.size)  # default size
 
         self.assertEqual(strconv.infer_matrix([]), [])
 
